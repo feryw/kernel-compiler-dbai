@@ -454,13 +454,13 @@ compile_env() {
     MAKE_SET_STRING=" ARCH=${ARCH} CROSS_COMPILE=${CROSS_COMPILE} CC=${CC} LD=${LD} ${MFLAGS} "
 
     # Copy .config before clean
-    cp -f ${kernel_path}/.config  ${config_path}
+    cp -f ${kernel_path}/${local_kernel_path}/.config  ${config_path}
 
     # Make clean/mrproper
     make ${MAKE_SET_STRING} mrproper
 
     # Restore .config after clean
-    cp -f ${config_path}/.config  ${kernel_path}
+    cp -f ${config_path}/.config  ${kernel_path}/${local_kernel_path}
 
     # Check .config file
     if [[ ! -s ".config" ]]; then
