@@ -41,14 +41,12 @@ jobs:
       - name: Compile Kernel
         id: compile
         run: |
-          ls -la
           echo -e "running path: [ ${PWD} ]"
 
           kernel_outpath="compile-kernel/output"
           
+          chmod +x *
           sudo ./recompile -k 5.4.0 -a true
-
-          echo -e "running path After Compile: [ ${PWD} ]"
 
           output_tags="$(ls -l ${PWD}/${kernel_outpath}/*.tar.gz | awk '{print $9}' | grep -oE '[1-9][0-9]{0,2}\.[0-9]{1,3}\.[0-9]+' | xargs | tr "[ ]" "_")"
           echo -e "Output environment variables."
