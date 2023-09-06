@@ -42,6 +42,7 @@ jobs:
         id: compile
         run: |
           echo -e "running path: [ ${PWD} ]"
+          cd ..
 
           kernel_outpath="compile-kernel/output"
           
