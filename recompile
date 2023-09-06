@@ -59,7 +59,7 @@ arch_info="$(uname -m)"
 host_release="$(cat /etc/os-release | grep '^VERSION_CODENAME=.*' | cut -d'=' -f2)"
 
 # Set the default for downloading kernel sources from github.com
-repo_owner="armachindo"
+repo_owner="armarchindo"
 repo_branch="main"
 build_kernel=("6.1.1" "5.15.1")
 # Set whether to use the latest kernel, options: [ true / false ]
