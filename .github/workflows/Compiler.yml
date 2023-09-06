@@ -4,10 +4,6 @@
 
 name: Compile release general kernel
 
-on:
-  repository_dispatch:
-  workflow_dispatch:
-
 env:
   TZ: Asia/Jakarta
 
@@ -36,8 +32,13 @@ jobs:
           sudo -E apt-get -y autoremove --purge
           sudo -E apt-get clean
           sudo timedatectl set-timezone "${TZ}"
-          
+
+          echo -e "Before running path: [ ${PWD} ]"
+
           cd ${GITHUB_ACTION_PATH}
+
+          echo -e "Current running path: [ ${PWD} ]"
+
           kernel_outpath="compile-kernel/output"
           
           sudo ./recompile -k 5.4.0 -a true
