@@ -453,14 +453,20 @@ compile_env() {
     # Set generic make string
     MAKE_SET_STRING=" ARCH=${ARCH} CROSS_COMPILE=${CROSS_COMPILE} CC=${CC} LD=${LD} ${MFLAGS} "
 
+    # Copy .config before clean
+    cp -f ${kernel_path}/.config  ${config_path}
+
     # Make clean/mrproper
     make ${MAKE_SET_STRING} mrproper
+
+    # Restore .config after clean
+    cp -f ${config_path}/.config  ${kernel_path}
 
     # Check .config file
     if [[ ! -s ".config" ]]; then
         [[ -s "${kernel_path}/.config" ]] || error_msg "Missing [ .config ] in Kernel path!"
-        # echo -e "${INFO} Copy [ ${config_path}/config-${kernel_verpatch} ] to [ .config ]"
-        # cp -f ${config_path}/config-${kernel_verpatch} .config
+        echo -e "${INFO} Copy [ ${config_path}/config-${kernel_verpatch} ] to [ .config ]"
+        cp -f ${config_path}/config-${kernel_verpatch} .config
     else
         echo -e "${INFO} Use the .config file in the current directory."
     fi
