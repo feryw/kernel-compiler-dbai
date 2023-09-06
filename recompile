@@ -464,7 +464,7 @@ compile_env() {
 
     # Check .config file
     if [[ ! -s ".config" ]]; then
-        [[ -s "${kernel_path}/.config" ]] || error_msg "Missing [ .config ] in Kernel path!"
+        [[ -s "${kernel_path}/${local_kernel_path}/.config" ]] || error_msg "Missing [ .config ] in Kernel path!"
         echo -e "${INFO} Copy [ ${config_path}/config-${kernel_verpatch} ] to [ .config ]"
         cp -f ${config_path}/config-${kernel_verpatch} .config
     else
