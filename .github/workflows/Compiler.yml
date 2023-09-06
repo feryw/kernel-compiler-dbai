@@ -4,6 +4,9 @@
 
 name: Compile release general kernel
 
+on:
+  repository_dispatch:
+
 env:
   TZ: Asia/Jakarta
 
@@ -32,7 +35,11 @@ jobs:
           sudo -E apt-get -y autoremove --purge
           sudo -E apt-get clean
           sudo timedatectl set-timezone "${TZ}"
-
+            
+          echo "status=success" >> ${GITHUB_OUTPUT}
+      - name: Compile Kernel
+        id: compile
+        run: |
           echo -e "Before running path: [ ${PWD} ]"
 
           cd ${GITHUB_ACTION_PATH}
@@ -55,7 +62,7 @@ jobs:
           echo -e "PACKAGED_OUTPUTDATE: $(date +"%m.%d.%H%M")"
           echo -e "PACKAGED_STATUS: success"
           echo -e "PACKAGED_OUTPUTPATH files list: \n$(ls -l ${PWD}/${kernel_outpath} 2>/dev/null)"
-            
+          
           echo "status=success" >> ${GITHUB_OUTPUT}
 
       - name: Upload Kernel to Release
