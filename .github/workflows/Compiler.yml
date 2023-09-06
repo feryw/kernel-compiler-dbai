@@ -41,8 +41,8 @@ jobs:
       - name: Compile Kernel
         id: compile
         run: |
+          ls -la
           echo -e "running path: [ ${PWD} ]"
-          cd ..
 
           kernel_outpath="compile-kernel/output"
           
@@ -63,6 +63,7 @@ jobs:
           echo -e "PACKAGED_OUTPUTPATH files list: \n$(ls -l ${PWD}/${kernel_outpath} 2>/dev/null)"
 
           echo "status=success" >> ${GITHUB_OUTPUT}
+        shell: bash
 
       - name: Upload Kernel to Release
         uses: ncipollo/release-action@main
