@@ -441,17 +441,17 @@ compile_env() {
 
     # Set cross compilation parameters
     export ARCH="arm64"
-    # export LOCALVERSION="${custom_name}"
+    export LOCALVERSION="${custom_name}"
 
     # Show variable
     echo -e "${INFO} ARCH: [ ${ARCH} ]"
-    # echo -e "${INFO} LOCALVERSION: [ ${LOCALVERSION} ]"
+    echo -e "${INFO} LOCALVERSION: [ ${LOCALVERSION} ]"
     echo -e "${INFO} CROSS_COMPILE: [ ${CROSS_COMPILE} ]"
     echo -e "${INFO} CC: [ ${CC} ]"
     echo -e "${INFO} LD: [ ${LD} ]"
 
     # Set generic make string
-    MAKE_SET_STRING=" ARCH=${ARCH} CROSS_COMPILE=${CROSS_COMPILE} CC=${CC} LD=${LD} ${MFLAGS} "
+    MAKE_SET_STRING=" ARCH=${ARCH} CROSS_COMPILE=${CROSS_COMPILE} CC=${CC} LD=${LD} ${MFLAGS} LOCALVERSION=${LOCALVERSION} "
 
     # Copy .config before clean
     cp -f ${kernel_path}/${local_kernel_path}/.config  ${config_path}
