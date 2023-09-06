@@ -1,24 +1,3 @@
-Skip to content
-armarchindo
-/
-linux-6.1.y
-
-Type / to search
-
-Code
-Pull requests
-Actions
-Projects
-Wiki
-Security
-Insights
-Settings
-Compile release general kernel
-Compile release general kernel #1
-Jobs
-Run details
-Workflow file for this run
-.github/workflows/kernel.yml at cf5f210
 #==========================================================================
 # Description: Compile kernel
 #==========================================================================
