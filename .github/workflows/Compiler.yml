@@ -12,10 +12,7 @@ env:
 
 jobs:
   build:
-    # runs-on: ubuntu-22.04-16core
-    runs-on:
-      group: ubuntu-runners
-      labels: ubuntu-20.04-16core
+    runs-on: ubuntu-latest-16-cores
     if: ${{ github.event.repository.owner.id }} == ${{ github.event.sender.id }}
 
     steps:
