@@ -63,7 +63,7 @@ repo_owner="feryw"
 repo_branch="master"
 build_kernel=("6.1.1" "5.15.1")
 # Set whether to use the latest kernel, options: [ true / false ]
-auto_kernel="false"
+auto_kernel="true"
 # Set whether to apply custom kernel patches, options: [ true / false ]
 auto_patch="false"
 # Set custom signature for the kernel
@@ -363,7 +363,7 @@ get_kernel_source() {
         #git clone -q --single-branch --depth=1 --branch=${code_branch} https://github.com/${server_kernel_repo} ${kernel_path}/${local_kernel_path}
         git clone --single-branch --depth=1 --branch=${code_branch} https://github.com/${server_kernel_repo} ${kernel_path}/${local_kernel_path}
         cd ${kernel_path}/${local_kernel_path}
-        git submodule update --recursive --remote
+        git submodule update --init --recursive
         [[ "${?}" -eq "0" ]] || error_msg "[ https://github.com/${server_kernel_repo} ] Clone failed."
     else
         # Get a local kernel version
