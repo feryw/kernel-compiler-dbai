@@ -59,15 +59,15 @@ arch_info="$(uname -m)"
 host_release="$(cat /etc/os-release | grep '^VERSION_CODENAME=.*' | cut -d'=' -f2)"
 
 # Set the default for downloading kernel sources from github.com
-repo_owner="armarchindo"
-repo_branch="main"
+repo_owner="feryw"
+repo_branch="master"
 build_kernel=("6.1.1" "5.15.1")
 # Set whether to use the latest kernel, options: [ true / false ]
 auto_kernel="false"
 # Set whether to apply custom kernel patches, options: [ true / false ]
 auto_patch="false"
 # Set custom signature for the kernel
-custom_name="-dbai"
+custom_name="-wyref"
 # Set the kernel compile object, options: [ dtbs / all ]
 package_list="all"
 
@@ -360,7 +360,10 @@ get_kernel_source() {
     # Download the kernel source code from github.com
     if [[ ! -d "${kernel_path}/${local_kernel_path}" ]]; then
         echo -e "${INFO} Start cloning from [ https://github.com/${server_kernel_repo} -b ${code_branch} ]"
-        git clone -q --single-branch --depth=1 --branch=${code_branch} https://github.com/${server_kernel_repo} ${kernel_path}/${local_kernel_path}
+        #git clone -q --single-branch --depth=1 --branch=${code_branch} https://github.com/${server_kernel_repo} ${kernel_path}/${local_kernel_path}
+        git clone --single-branch --depth=1 --branch=${code_branch} https://github.com/${server_kernel_repo} ${kernel_path}/${local_kernel_path}
+        cd ${kernel_path}/${local_kernel_path}
+        git submodule update --recursive --remote
         [[ "${?}" -eq "0" ]] || error_msg "[ https://github.com/${server_kernel_repo} ] Clone failed."
     else
         # Get a local kernel version
@@ -374,6 +377,7 @@ get_kernel_source() {
             # Pull the latest source code of the server
             cd ${kernel_path}/${local_kernel_path}
             git checkout ${code_branch} && git reset --hard origin/${code_branch} && git pull
+            git submodule update --recursive --remote
             unset kernel_version
             kernel_version="${local_makefile_version}.${local_makefile_patchlevel}.${kernel_sub}"
             echo -e "${INFO} Synchronize the upstream source code, compile the kernel version [ ${kernel_version} ]."
@@ -428,7 +432,7 @@ compile_env() {
     echo -e "${STEPS} Start checking local compilation environments..."
 
     # Get kernel output name
-    kernel_outname="${kernel_version}"
+    kernel_outname="${kernel_version}${custom_name}"
     echo -e "${INFO} Compile kernel output name: [ ${kernel_outname} ]"
 
     # Create a temp directory
@@ -454,13 +458,18 @@ compile_env() {
     MAKE_SET_STRING=" ARCH=${ARCH} CROSS_COMPILE=${CROSS_COMPILE} CC=${CC} LD=${LD} ${MFLAGS} LOCALVERSION=${LOCALVERSION} "
 
     # Copy .config before clean
-    cp -f ${kernel_path}/${local_kernel_path}/.config  ${config_path}
+    cp -f ${kernel_path}/${local_kernel_path}/.config  ${config_path}/config-${kernel_verpatch}
 
     # Make clean/mrproper
-    make ${MAKE_SET_STRING} mrproper
-
+    #make ${MAKE_SET_STRING} mrproper
+    time make \
+    ARCH=arm64 CROSS_COMPILE="/usr/local/toolchain/arm-gnu-toolchain-12.3.rel1-x86_64-aarch64-none-linux-gnu/bin/aarch64-none-linux-gnu-" \
+    CC="ccache /usr/local/toolchain/arm-gnu-toolchain-12.3.rel1-x86_64-aarch64-none-linux-gnu/bin/aarch64-none-linux-gnu-gcc" \
+    LD="/usr/local/toolchain/arm-gnu-toolchain-12.3.rel1-x86_64-aarch64-none-linux-gnu/bin/aarch64-none-linux-gnu-ld.bfd" \
+    LOCALVERSION=${LOCALVERSION} \
+    mrproper
     # Restore .config after clean
-    cp -f ${config_path}/.config  ${kernel_path}/${local_kernel_path}
+    cp -f ${config_path}/config-${kernel_verpatch}  ${kernel_path}/${local_kernel_path}/.config
 
     # Check .config file
     if [[ ! -s ".config" ]]; then
@@ -506,12 +515,24 @@ compile_kernel() {
 
     # Make kernel
     echo -e "${STEPS} Start compilation kernel [ ${local_kernel_path} ] Use ${PROCESS} Thread"
-    make ${MAKE_SET_STRING} Image modules dtbs -j${PROCESS}
+    #make ${MAKE_SET_STRING} Image modules dtbs -j${PROCESS}
+    time make \
+    ARCH=arm64 CROSS_COMPILE="/usr/local/toolchain/arm-gnu-toolchain-12.3.rel1-x86_64-aarch64-none-linux-gnu/bin/aarch64-none-linux-gnu-" \
+    CC="ccache /usr/local/toolchain/arm-gnu-toolchain-12.3.rel1-x86_64-aarch64-none-linux-gnu/bin/aarch64-none-linux-gnu-gcc" \
+    LD="/usr/local/toolchain/arm-gnu-toolchain-12.3.rel1-x86_64-aarch64-none-linux-gnu/bin/aarch64-none-linux-gnu-ld.bfd" \
+    LOCALVERSION=${LOCALVERSION} \
+    Image modules dtbs -j${PROCESS}
     [[ "${?}" -eq "0" ]] && echo -e "${SUCCESS} The kernel is compiled successfully."
 
     # Install modules
     echo -e "${STEPS} Install modules..."
-    make ${MAKE_SET_STRING} INSTALL_MOD_PATH=${out_kernel}/modules modules_install
+    #make ${MAKE_SET_STRING} INSTALL_MOD_PATH=${out_kernel}/modules modules_install
+    time make \
+    ARCH=arm64 CROSS_COMPILE="/usr/local/toolchain/arm-gnu-toolchain-12.3.rel1-x86_64-aarch64-none-linux-gnu/bin/aarch64-none-linux-gnu-" \
+    CC="ccache /usr/local/toolchain/arm-gnu-toolchain-12.3.rel1-x86_64-aarch64-none-linux-gnu/bin/aarch64-none-linux-gnu-gcc" \
+    LD="/usr/local/toolchain/arm-gnu-toolchain-12.3.rel1-x86_64-aarch64-none-linux-gnu/bin/aarch64-none-linux-gnu-ld.bfd" \
+    LOCALVERSION=${LOCALVERSION} \
+    INSTALL_MOD_PATH=${out_kernel}/modules modules_install
     [[ "${?}" -eq "0" ]] && echo -e "${SUCCESS} The modules is installed successfully."
 
     # Install headers
@@ -522,6 +543,7 @@ compile_kernel() {
 
 generate_uinitrd() {
     cd ${current_path}
+
     echo -e "${STEPS} Create chroot..."
 
     cp -f ${armbian_file} ${chroot_file}
@@ -549,11 +571,11 @@ generate_uinitrd() {
     else
         cp -f ${tag_rootfs}/boot/vmlinuz-${kernel_outname} ${tag_rootfs}/boot/zImage
     fi
-    #echo -e "${INFO} Kernel copy results in the [ ${tag_rootfs}/boot ] directory: \n$(ls -l ${tag_rootfs}/boot) \n"
+    echo -e "${INFO} Kernel copy results in the [ ${tag_rootfs}/boot ] directory: \n$(ls -l ${tag_rootfs}/boot) \n"
 
     rm -rf ${tag_rootfs}/usr/lib/modules/*
     cp -rf ${out_kernel}/modules/lib/modules/${kernel_outname} -t ${tag_rootfs}/usr/lib/modules
-    #echo -e "${INFO} Kernel copy results in the [ ${tag_rootfs}/usr/lib/modules ] directory: \n$(ls -l ${tag_rootfs}/usr/lib/modules) \n"
+    echo -e "${INFO} Kernel copy results in the [ ${tag_rootfs}/usr/lib/modules ] directory: \n$(ls -l ${tag_rootfs}/usr/lib/modules) \n"
 
     # COMPRESS: [ gzip | bzip2 | lz4 | lzma | lzop | xz | zstd ]
     compress_initrd_file="${tag_rootfs}/etc/initramfs-tools/initramfs.conf"
@@ -561,12 +583,12 @@ generate_uinitrd() {
     echo "COMPRESS=gzip" >>${compress_initrd_file}
 
     [[ -f "/usr/bin/${qemu_binary_arm64}" ]] && cp -f /usr/bin/${qemu_binary_arm64} ${tag_rootfs}/usr/bin/
-    #echo -e "${INFO} The [ ${qemu_binary_arm64} ] file copy results: \n$(ls -l ${tag_rootfs}/usr/bin/${qemu_binary_arm64}) \n"
+    echo -e "${INFO} The [ ${qemu_binary_arm64} ] file copy results: \n$(ls -l ${tag_rootfs}/usr/bin/${qemu_binary_arm64}) \n"
 
     cp -f ${script_path}/ubuntu_chroot_armbian.sh ${tag_rootfs}/root
     chmod +x ${tag_rootfs}/root/ubuntu_chroot_armbian.sh
     sync && sleep 3
-    #echo -e "${INFO} Kernel copy results in the [ ${tag_rootfs}/root ] directory: \n$(ls -l ${tag_rootfs}/root) \n"
+    echo -e "${INFO} Kernel copy results in the [ ${tag_rootfs}/root ] directory: \n$(ls -l ${tag_rootfs}/root) \n"
 
     # Enter the armbian system to generate /boot/uInitrd-${kernel_outname} file
     echo -e "${INFO} Enter the chroot armbian system..."
@@ -704,6 +726,7 @@ loop_recompile() {
         fi
 
         # Execute the following functions in sequence
+        #clean_tmp
         get_kernel_source
         compile_env
         compile_selection
@@ -712,6 +735,18 @@ loop_recompile() {
         let j++
     done
 }
+
+sync && sleep 3
+umount /home/infra/stb/kernel-compiler-dbai/compile-kernel/output/chroot/root/boot
+umount /home/infra/stb/kernel-compiler-dbai/compile-kernel/output/chroot/root
+umount /home/infra/stb/kernel-compiler-dbai/compile-kernel/output/chroot/root/boot
+umount /home/infra/stb/kernel-compiler-dbai/compile-kernel/output/chroot/root
+umount /home/infra/stb/kernel-compiler-dbai/compile-kernel/output/chroot/root/boot
+umount /home/infra/stb/kernel-compiler-dbai/compile-kernel/output/chroot/root
+umount /home/infra/stb/kernel-compiler-dbai/compile-kernel/output/chroot/root/boot
+umount /home/infra/stb/kernel-compiler-dbai/compile-kernel/output/chroot/root
+losetup -D
+
 
 # Show welcome message
 echo -e "${STEPS} Welcome to compile kernel! \n"
