@@ -463,9 +463,9 @@ compile_env() {
     # Make clean/mrproper
     #make ${MAKE_SET_STRING} mrproper
     time make \
-    ARCH=arm64 CROSS_COMPILE="/usr/local/toolchain/arm-gnu-toolchain-12.3.rel1-x86_64-aarch64-none-linux-gnu/bin/aarch64-none-linux-gnu-" \
-    CC="ccache /usr/local/toolchain/arm-gnu-toolchain-12.3.rel1-x86_64-aarch64-none-linux-gnu/bin/aarch64-none-linux-gnu-gcc" \
-    LD="/usr/local/toolchain/arm-gnu-toolchain-12.3.rel1-x86_64-aarch64-none-linux-gnu/bin/aarch64-none-linux-gnu-ld.bfd" \
+    ARCH=arm64 CROSS_COMPILE="/usr/local/toolchain/gcc-linaro-7.5.0-2019.12-x86_64_aarch64-linux-gnu/bin/aarch64-linux-gnu-" \
+    CC="ccache /usr/local/toolchain/gcc-linaro-7.5.0-2019.12-x86_64_aarch64-linux-gnu/bin/aarch64-linux-gnu-gcc" \
+    LD="/usr/local/toolchain/gcc-linaro-7.5.0-2019.12-x86_64_aarch64-linux-gnu/bin/aarch64-linux-gnu-ld.bfd" \
     LOCALVERSION=${LOCALVERSION} \
     mrproper
     # Restore .config after clean
@@ -517,9 +517,9 @@ compile_kernel() {
     echo -e "${STEPS} Start compilation kernel [ ${local_kernel_path} ] Use ${PROCESS} Thread"
     #make ${MAKE_SET_STRING} Image modules dtbs -j${PROCESS}
     time make \
-    ARCH=arm64 CROSS_COMPILE="/usr/local/toolchain/arm-gnu-toolchain-12.3.rel1-x86_64-aarch64-none-linux-gnu/bin/aarch64-none-linux-gnu-" \
-    CC="ccache /usr/local/toolchain/arm-gnu-toolchain-12.3.rel1-x86_64-aarch64-none-linux-gnu/bin/aarch64-none-linux-gnu-gcc" \
-    LD="/usr/local/toolchain/arm-gnu-toolchain-12.3.rel1-x86_64-aarch64-none-linux-gnu/bin/aarch64-none-linux-gnu-ld.bfd" \
+    ARCH=arm64 CROSS_COMPILE="/usr/local/toolchain/gcc-linaro-7.5.0-2019.12-x86_64_aarch64-linux-gnu/bin/aarch64-linux-gnu-" \
+    CC="ccache /usr/local/toolchain/gcc-linaro-7.5.0-2019.12-x86_64_aarch64-linux-gnu/bin/aarch64-linux-gnu-gcc" \
+    LD="/usr/local/toolchain/gcc-linaro-7.5.0-2019.12-x86_64_aarch64-linux-gnu/bin/aarch64-linux-gnu-ld.bfd" \
     LOCALVERSION=${LOCALVERSION} \
     Image modules dtbs -j${PROCESS}
     [[ "${?}" -eq "0" ]] && echo -e "${SUCCESS} The kernel is compiled successfully."
