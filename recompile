@@ -361,9 +361,9 @@ get_kernel_source() {
     if [[ ! -d "${kernel_path}/${local_kernel_path}" ]]; then
         echo -e "${INFO} Start cloning from [ https://github.com/${server_kernel_repo} -b ${code_branch} ]"
         git clone https://github.com/${server_kernel_repo} ${kernel_path}/${local_kernel_path}
+        cd ${kernel_path}/${local_kernel_path}
         CHECKOUT_VER="$(git rev-list HEAD --grep "Linux ${build_kernel}")"
         echo -e "${INFO} CHECKOUT_VER = ${CHECKOUT_VER}"
-        cd ${kernel_path}/${local_kernel_path}
 	git checkout ${CHECKOUT_VER}
         [[ "${?}" -eq "0" ]] || error_msg "[ https://github.com/${server_kernel_repo} ] Clone failed."
     else
