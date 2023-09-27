@@ -111,12 +111,12 @@ mount_try() {
     t="1"
     max_try="10"
     while [[ "${t}" -le "${max_try}" ]]; do
-        mount ${m_dev} ${m_target}
+        sudo mount ${m_dev} ${m_target}
         if [[ "${?}" -eq "0" ]]; then
             break
         else
-            sync && sleep 3
-            umount -f ${m_target} 2>/dev/null
+            sudo sync && sleep 3
+            sudo umount -f ${m_target} 2>/dev/null
             t="$((t + 1))"
         fi
     done
@@ -361,7 +361,9 @@ get_kernel_source() {
     if [[ ! -d "${kernel_path}/${local_kernel_path}" ]]; then
         echo -e "${INFO} Start cloning from [ https://github.com/${server_kernel_repo} -b ${code_branch} ]"
         #git clone -q --single-branch --depth=1 --branch=${code_branch} https://github.com/${server_kernel_repo} ${kernel_path}/${local_kernel_path}
-        git clone --single-branch --depth=1 --branch=v${build_kernel} --recurse-submodules https://github.com/${server_kernel_repo} ${kernel_path}/${local_kernel_path}
+        #git clone --single-branch --depth=1 --branch=v${build_kernel} --recurse-submodules https://github.com/${server_kernel_repo} ${kernel_path}/${local_kernel_path}
+        git clone --recurse-submodules https://github.com/${server_kernel_repo} ${kernel_path}/${local_kernel_path}
+        git checkout `git rev-list -n 1 v${build_kernel}`
         cd ${kernel_path}/${local_kernel_path}
         git submodule update --recursive --remote
         [[ "${?}" -eq "0" ]] || error_msg "[ https://github.com/${server_kernel_repo} ] Clone failed."
@@ -380,7 +382,7 @@ get_kernel_source() {
             kernel_version="${local_makefile_version}.${local_makefile_patchlevel}.${kernel_sub}"
             echo -e "${INFO} Synchronize the upstream source code, compile the kernel version [ ${kernel_version} ]."
         else
-            git checkout v${build_kernel} 
+            git checkout `git rev-list -n 1 v${build_kernel}`
             # Reset to local kernel version number
             unset kernel_version
             kernel_version="${local_makefile_version}.${local_makefile_patchlevel}.${local_makefile_sublevel}"
@@ -431,12 +433,13 @@ compile_env() {
     echo -e "${STEPS} Start checking local compilation environments..."
 
     # Get kernel output name
-    kernel_outname="${kernel_version}${custom_name}"
+    #kernel_outname="${kernel_version}${custom_name}"
+    kernel_outname="${kernel_version}"
     echo -e "${INFO} Compile kernel output name: [ ${kernel_outname} ]"
 
     # Create a temp directory
     echo -e "${INFO} Create a temp directory: [ ${out_kernel} ]"
-    rm -rf ${out_kernel}/{chroot/,boot/,dtb/,modules/,header/,${kernel_version}/}
+    sudo rm -rf ${out_kernel}/{chroot/,boot/,dtb/,modules/,header/,${kernel_version}/}
     mkdir -p ${out_kernel}/{chroot/{root/boot/,},boot/,dtb/{allwinner/,amlogic/,rockchip/},modules/,header/,${kernel_version}/}
 
     cd ${kernel_path}/${local_kernel_path}
@@ -465,7 +468,7 @@ compile_env() {
     ARCH=arm64 CROSS_COMPILE="/usr/local/toolchain/gcc-linaro-7.5.0-2019.12-x86_64_aarch64-linux-gnu/bin/aarch64-linux-gnu-" \
     CC="ccache /usr/local/toolchain/gcc-linaro-7.5.0-2019.12-x86_64_aarch64-linux-gnu/bin/aarch64-linux-gnu-gcc" \
     LD="/usr/local/toolchain/gcc-linaro-7.5.0-2019.12-x86_64_aarch64-linux-gnu/bin/aarch64-linux-gnu-ld.bfd" \
-    LOCALVERSION=${LOCALVERSION} \
+    LOCALVERSION="" \
     mrproper
 
     # Restore .config after clean
@@ -521,7 +524,7 @@ compile_kernel() {
     ARCH=arm64 CROSS_COMPILE="/usr/local/toolchain/gcc-linaro-7.5.0-2019.12-x86_64_aarch64-linux-gnu/bin/aarch64-linux-gnu-" \
     CC="ccache /usr/local/toolchain/gcc-linaro-7.5.0-2019.12-x86_64_aarch64-linux-gnu/bin/aarch64-linux-gnu-gcc" \
     LD="/usr/local/toolchain/gcc-linaro-7.5.0-2019.12-x86_64_aarch64-linux-gnu/bin/aarch64-linux-gnu-ld.bfd" \
-    LOCALVERSION=${LOCALVERSION} \
+    LOCALVERSION="" \
     Image modules dtbs -j${PROCESS}
     [[ "${?}" -eq "0" ]] && echo -e "${SUCCESS} The kernel is compiled successfully."
 
@@ -532,7 +535,7 @@ compile_kernel() {
     ARCH=arm64 CROSS_COMPILE="/usr/local/toolchain/arm-gnu-toolchain-12.3.rel1-x86_64-aarch64-none-linux-gnu/bin/aarch64-none-linux-gnu-" \
     CC="ccache /usr/local/toolchain/arm-gnu-toolchain-12.3.rel1-x86_64-aarch64-none-linux-gnu/bin/aarch64-none-linux-gnu-gcc" \
     LD="/usr/local/toolchain/arm-gnu-toolchain-12.3.rel1-x86_64-aarch64-none-linux-gnu/bin/aarch64-none-linux-gnu-ld.bfd" \
-    LOCALVERSION=${LOCALVERSION} \
+    LOCALVERSION="" \
     INSTALL_MOD_PATH=${out_kernel}/modules modules_install
     [[ "${?}" -eq "0" ]] && echo -e "${SUCCESS} The modules is installed successfully."
 
@@ -552,7 +555,7 @@ generate_uinitrd() {
     # Mount the armbian system
     tag_rootfs="${chroot_path}/root"
 
-    loop_armbian="$(losetup -P -f --show "${chroot_file}")"
+    loop_armbian="$(sudo losetup -P -f --show "${chroot_file}")"
     [[ -n "${loop_armbian}" ]] || error_msg "losetup ${chroot_file} failed."
 
     mount_try ${loop_armbian}p2 ${tag_rootfs}
@@ -562,53 +565,54 @@ generate_uinitrd() {
     echo -e "${INFO} Armbian PLATFORM: [ ${ARMBIAN_PLATFORM} ]"
 
     # Remove current system files for /boot
-    rm -f ${tag_rootfs}/boot/{config-*,initrd.img-*,System.map-*,vmlinuz-*,uInitrd*,*Image}
+    sudo rm -f ${tag_rootfs}/boot/{config-*,initrd.img-*,System.map-*,vmlinuz-*,uInitrd*,*Image}
     # Copy /boot related files into armbian system
-    cp -f ${kernel_path}/${local_kernel_path}/System.map ${tag_rootfs}/boot/System.map-${kernel_outname}
-    cp -f ${kernel_path}/${local_kernel_path}/.config ${tag_rootfs}/boot/config-${kernel_outname}
-    cp -f ${kernel_path}/${local_kernel_path}/arch/arm64/boot/Image ${tag_rootfs}/boot/vmlinuz-${kernel_outname}
+    sudo cp -f ${kernel_path}/${local_kernel_path}/System.map ${tag_rootfs}/boot/System.map-${kernel_outname}
+    sudo cp -f ${kernel_path}/${local_kernel_path}/.config ${tag_rootfs}/boot/config-${kernel_outname}
+    sudo cp -f ${kernel_path}/${local_kernel_path}/arch/arm64/boot/Image ${tag_rootfs}/boot/vmlinuz-${kernel_outname}
     if [[ "${ARMBIAN_PLATFORM}" == "rockchip" || "${ARMBIAN_PLATFORM}" == "allwinner" ]]; then
-        cp -f ${tag_rootfs}/boot/vmlinuz-${kernel_outname} ${tag_rootfs}/boot/Image
+        sudo cp -f ${tag_rootfs}/boot/vmlinuz-${kernel_outname} ${tag_rootfs}/boot/Image
     else
-        cp -f ${tag_rootfs}/boot/vmlinuz-${kernel_outname} ${tag_rootfs}/boot/zImage
+        sudo cp -f ${tag_rootfs}/boot/vmlinuz-${kernel_outname} ${tag_rootfs}/boot/zImage
     fi
-    echo -e "${INFO} Kernel copy results in the [ ${tag_rootfs}/boot ] directory: \n$(ls -l ${tag_rootfs}/boot) \n"
+    echo -e "${INFO} Kernel copy results in the [ ${tag_rootfs}/boot ] directory: \n$(sudo ls -l ${tag_rootfs}/boot) \n"
 
-    rm -rf ${tag_rootfs}/usr/lib/modules/*
-    cp -rf ${out_kernel}/modules/lib/modules/${kernel_outname} -t ${tag_rootfs}/usr/lib/modules
+    sudo rm -rf ${tag_rootfs}/usr/lib/modules/*
+    sudo cp -rf ${out_kernel}/modules/lib/modules/${kernel_outname} -t ${tag_rootfs}/usr/lib/modules
     echo -e "${INFO} Kernel copy results in the [ ${tag_rootfs}/usr/lib/modules ] directory: \n$(ls -l ${tag_rootfs}/usr/lib/modules) \n"
 
     # COMPRESS: [ gzip | bzip2 | lz4 | lzma | lzop | xz | zstd ]
     compress_initrd_file="${tag_rootfs}/etc/initramfs-tools/initramfs.conf"
-    sed -i "/^COMPRESS=/d" ${compress_initrd_file}
-    echo "COMPRESS=gzip" >>${compress_initrd_file}
+    sudo sed -i "/^COMPRESS=/d" ${compress_initrd_file}
+    echo "COMPRESS=gzip" | sudo tee -a ${compress_initrd_file}
 
-    [[ -f "/usr/bin/${qemu_binary_arm64}" ]] && cp -f /usr/bin/${qemu_binary_arm64} ${tag_rootfs}/usr/bin/
+    [[ -f "/usr/bin/${qemu_binary_arm64}" ]] && sudo cp -f /usr/bin/${qemu_binary_arm64} ${tag_rootfs}/usr/bin/
     echo -e "${INFO} The [ ${qemu_binary_arm64} ] file copy results: \n$(ls -l ${tag_rootfs}/usr/bin/${qemu_binary_arm64}) \n"
 
-    cp -f ${script_path}/ubuntu_chroot_armbian.sh ${tag_rootfs}/root
-    chmod +x ${tag_rootfs}/root/ubuntu_chroot_armbian.sh
-    sync && sleep 3
+    sudo cp -f ${script_path}/ubuntu_chroot_armbian.sh ${tag_rootfs}/root
+    sudo chmod +x ${tag_rootfs}/root/ubuntu_chroot_armbian.sh
+    sudo sync && sleep 3
     echo -e "${INFO} Kernel copy results in the [ ${tag_rootfs}/root ] directory: \n$(ls -l ${tag_rootfs}/root) \n"
 
     # Enter the armbian system to generate /boot/uInitrd-${kernel_outname} file
     echo -e "${INFO} Enter the chroot armbian system..."
-    chroot ${tag_rootfs} /bin/bash -c "/root/ubuntu_chroot_armbian.sh ${kernel_outname}"
+    sudo chroot ${tag_rootfs} /bin/bash -c "/root/ubuntu_chroot_armbian.sh ${kernel_outname}"
     [[ "${?}" -eq "0" && -f "${tag_rootfs}/boot/uInitrd-${kernel_outname}" ]] || error_msg "Create chroot uInitrd-${kernel_outname} file failed."
 
     cd ${current_path}
     # Copy the generated uInitrd file to the current system
     echo -e "${INFO} Copy the generated files from [ ${tag_rootfs}/boot ]"
-    cp -f ${tag_rootfs}/boot/*${kernel_outname} ${out_kernel}/boot
+    sudo cp -f ${tag_rootfs}/boot/*${kernel_outname} ${out_kernel}/boot
 
     # Unmount the armbian system
     sync && sleep 3
-    umount ${tag_rootfs}/boot 2>/dev/null
-    umount ${tag_rootfs} 2>/dev/null
-    losetup -D 2>/dev/null
+    sudo umount ${tag_rootfs}/boot 2>/dev/null
+    sudo umount ${tag_rootfs} 2>/dev/null
+    sudo losetup -D 2>/dev/null
 }
 
 packit_dtbs() {
+    kernel_outname="6.4.11"
     # Pack 3 dtbs files
     echo -e "${STEPS} Packing the [ ${kernel_outname} ] dtbs packages..."
 
@@ -650,11 +654,12 @@ packit_dtbs() {
 }
 
 packit_kernel() {
+    kernel_outname="6.4.11"
     # Pack 3 kernel files
     echo -e "${STEPS} Packing the [ ${kernel_outname} ] boot, modules and header packages..."
 
     cd ${out_kernel}/boot
-    chmod +x *
+    sudo chmod +x *
     tar -czf boot-${kernel_outname}.tar.gz *
     mv -f *.tar.gz ${out_kernel}/${kernel_version}
     echo -e "${SUCCESS} The [ boot-${kernel_outname}.tar.gz ] file is packaged."
@@ -727,7 +732,6 @@ loop_recompile() {
         fi
 
         # Execute the following functions in sequence
-        #clean_tmp
         get_kernel_source
         compile_env
         compile_selection
@@ -738,28 +742,28 @@ loop_recompile() {
 }
 
 sync && sleep 3
-umount /home/infra/stb/kernel-compiler-dbai/compile-kernel/output/chroot/root/boot
-umount /home/infra/stb/kernel-compiler-dbai/compile-kernel/output/chroot/root
-umount /home/infra/stb/kernel-compiler-dbai/compile-kernel/output/chroot/root/boot
-umount /home/infra/stb/kernel-compiler-dbai/compile-kernel/output/chroot/root
-umount /home/infra/stb/kernel-compiler-dbai/compile-kernel/output/chroot/root/boot
-umount /home/infra/stb/kernel-compiler-dbai/compile-kernel/output/chroot/root
-umount /home/infra/stb/kernel-compiler-dbai/compile-kernel/output/chroot/root/boot
-umount /home/infra/stb/kernel-compiler-dbai/compile-kernel/output/chroot/root
-losetup -D
+sudo umount /home/infra/stb/kernel-compiler-dbai/compile-kernel/output/chroot/root/boot
+sudo umount /home/infra/stb/kernel-compiler-dbai/compile-kernel/output/chroot/root
+sudo umount /home/infra/stb/kernel-compiler-dbai/compile-kernel/output/chroot/root/boot
+sudo umount /home/infra/stb/kernel-compiler-dbai/compile-kernel/output/chroot/root
+sudo umount /home/infra/stb/kernel-compiler-dbai/compile-kernel/output/chroot/root/boot
+sudo umount /home/infra/stb/kernel-compiler-dbai/compile-kernel/output/chroot/root
+sudo umount /home/infra/stb/kernel-compiler-dbai/compile-kernel/output/chroot/root/boot
+sudo umount /home/infra/stb/kernel-compiler-dbai/compile-kernel/output/chroot/root
+sudo losetup -D
 
 
 # Show welcome message
 echo -e "${STEPS} Welcome to compile kernel! \n"
 echo -e "${INFO} Server running on Ubuntu: [ Release: ${host_release} / Host: ${arch_info} ] \n"
 # Check script permission, supports running on the x86_64 and aarch64 platforms (ubuntu/debian)
-[[ "$(id -u)" == "0" ]] || error_msg "Please run this script as root: [ sudo ./${0} ]"
+#[[ "$(id -u)" == "0" ]] || error_msg "Please run this script as root: [ sudo ./${0} ]"
 [[ "x86_64 aarch64" == *"${arch_info}"* ]] || error_msg "This script is only supported on the x86_64 and aarch64 platforms."
 
 # Initialize variables
 init_var "${@}"
 # Check and install the toolchain
-toolchain_check
+#toolchain_check
 # Query the latest kernel version
 [[ "${auto_kernel}" == "true" || "${auto_kernel}" == "yes" ]] && query_version
 
