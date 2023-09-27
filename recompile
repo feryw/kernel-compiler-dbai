@@ -361,7 +361,10 @@ get_kernel_source() {
     if [[ ! -d "${kernel_path}/${local_kernel_path}" ]]; then
         echo -e "${INFO} Start cloning from [ https://github.com/${server_kernel_repo} -b ${code_branch} ]"
         git clone https://github.com/${server_kernel_repo} ${kernel_path}/${local_kernel_path}
-	git checkout `git rev-list HEAD --grep "Linux ${build_kernel}"`
+        CHECKOUT_VER="$(git rev-list HEAD --grep "Linux ${build_kernel}")"
+        echo -e "${INFO} CHECKOUT_VER = ${CHECKOUT_VER}"
+        cd ${kernel_path}/${local_kernel_path}
+	git checkout ${CHECKOUT_VER}
         [[ "${?}" -eq "0" ]] || error_msg "[ https://github.com/${server_kernel_repo} ] Clone failed."
     else
         # Get a local kernel version
@@ -378,7 +381,10 @@ get_kernel_source() {
             kernel_version="${local_makefile_version}.${local_makefile_patchlevel}.${kernel_sub}"
             echo -e "${INFO} Synchronize the upstream source code, compile the kernel version [ ${kernel_version} ]."
         else
-            git checkout `git rev-list HEAD --grep "Linux ${build_kernel}"`
+	    cd ${kernel_path}/${local_kernel_path}
+            CHECKOUT_VER="$(git rev-list HEAD --grep "Linux ${build_kernel}")"
+            echo -e "${INFO} CHECKOUT_VER = ${CHECKOUT_VER}"
+            git checkout ${CHECKOUT_VER}
             # Reset to local kernel version number
             unset kernel_version
             kernel_version="${local_makefile_version}.${local_makefile_patchlevel}.${local_makefile_sublevel}"
@@ -495,6 +501,12 @@ compile_env() {
 
     # Make menuconfig
     #make ${MAKE_SET_STRING} menuconfig
+    time make \
+    ARCH=arm64 CROSS_COMPILE="/usr/local/toolchain/gcc-linaro-7.5.0-2019.12-x86_64_aarch64-linux-gnu/bin/aarch64-linux-gnu-" \
+    CC="ccache /usr/local/toolchain/gcc-linaro-7.5.0-2019.12-x86_64_aarch64-linux-gnu/bin/aarch64-linux-gnu-gcc" \
+    LD="/usr/local/toolchain/gcc-linaro-7.5.0-2019.12-x86_64_aarch64-linux-gnu/bin/aarch64-linux-gnu-ld.bfd" \
+    LOCALVERSION="" \
+    menuconfig
 
     # Set max process
     PROCESS="$(cat /proc/cpuinfo | grep "processor" | wc -l)"
