@@ -360,12 +360,8 @@ get_kernel_source() {
     # Download the kernel source code from github.com
     if [[ ! -d "${kernel_path}/${local_kernel_path}" ]]; then
         echo -e "${INFO} Start cloning from [ https://github.com/${server_kernel_repo} -b ${code_branch} ]"
-        #git clone -q --single-branch --depth=1 --branch=${code_branch} https://github.com/${server_kernel_repo} ${kernel_path}/${local_kernel_path}
-        #git clone --single-branch --depth=1 --branch=v${build_kernel} --recurse-submodules https://github.com/${server_kernel_repo} ${kernel_path}/${local_kernel_path}
-        git clone --recurse-submodules https://github.com/${server_kernel_repo} ${kernel_path}/${local_kernel_path}
-        git checkout `git rev-list -n 1 v${build_kernel}`
-        cd ${kernel_path}/${local_kernel_path}
-        git submodule update --recursive --remote
+        git clone https://github.com/${server_kernel_repo} ${kernel_path}/${local_kernel_path}
+	git checkout `git rev-list HEAD --grep "Linux ${build_kernel}"`
         [[ "${?}" -eq "0" ]] || error_msg "[ https://github.com/${server_kernel_repo} ] Clone failed."
     else
         # Get a local kernel version
@@ -382,7 +378,7 @@ get_kernel_source() {
             kernel_version="${local_makefile_version}.${local_makefile_patchlevel}.${kernel_sub}"
             echo -e "${INFO} Synchronize the upstream source code, compile the kernel version [ ${kernel_version} ]."
         else
-            git checkout `git rev-list -n 1 v${build_kernel}`
+            git checkout `git rev-list HEAD --grep "Linux ${build_kernel}"`
             # Reset to local kernel version number
             unset kernel_version
             kernel_version="${local_makefile_version}.${local_makefile_patchlevel}.${local_makefile_sublevel}"
