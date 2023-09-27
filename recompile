@@ -361,7 +361,7 @@ get_kernel_source() {
     if [[ ! -d "${kernel_path}/${local_kernel_path}" ]]; then
         echo -e "${INFO} Start cloning from [ https://github.com/${server_kernel_repo} -b ${code_branch} ]"
         #git clone -q --single-branch --depth=1 --branch=${code_branch} https://github.com/${server_kernel_repo} ${kernel_path}/${local_kernel_path}
-        git clone --single-branch --depth=1 --branch=${code_branch} --recurse-submodules https://github.com/${server_kernel_repo} ${kernel_path}/${local_kernel_path}
+        git clone --single-branch --depth=1 --branch=v${build_kernel} --recurse-submodules https://github.com/${server_kernel_repo} ${kernel_path}/${local_kernel_path}
         cd ${kernel_path}/${local_kernel_path}
         git submodule update --recursive --remote
         [[ "${?}" -eq "0" ]] || error_msg "[ https://github.com/${server_kernel_repo} ] Clone failed."
@@ -371,17 +371,16 @@ get_kernel_source() {
         local_makefile_version="$(cat ${local_makefile} | grep -oE "VERSION =.*" | head -n 1 | grep -oE '[0-9]{1,3}')"
         local_makefile_patchlevel="$(cat ${local_makefile} | grep -oE "PATCHLEVEL =.*" | head -n 1 | grep -oE '[0-9]{1,3}')"
         local_makefile_sublevel="$(cat ${local_makefile} | grep -oE "SUBLEVEL =.*" | head -n 1 | grep -oE '[0-9]{1,3}')"
-
         # Local version and server version comparison
         if [[ "${auto_kernel}" == "true" || "${auto_kernel}" == "yes" ]] && [[ "${kernel_sub}" -gt "${local_makefile_sublevel}" ]]; then
             # Pull the latest source code of the server
             cd ${kernel_path}/${local_kernel_path}
-            git checkout ${code_branch} && git reset --hard origin/${code_branch} && git pull
-            git submodule update --recursive --remote
+            git checkout ${code_branch} && git reset --hard origin/${code_branch} && git pull && git submodule update --recursive --remote
             unset kernel_version
             kernel_version="${local_makefile_version}.${local_makefile_patchlevel}.${kernel_sub}"
             echo -e "${INFO} Synchronize the upstream source code, compile the kernel version [ ${kernel_version} ]."
         else
+            git checkout v${build_kernel} 
             # Reset to local kernel version number
             unset kernel_version
             kernel_version="${local_makefile_version}.${local_makefile_patchlevel}.${local_makefile_sublevel}"
@@ -468,7 +467,9 @@ compile_env() {
     LD="/usr/local/toolchain/gcc-linaro-7.5.0-2019.12-x86_64_aarch64-linux-gnu/bin/aarch64-linux-gnu-ld.bfd" \
     LOCALVERSION=${LOCALVERSION} \
     mrproper
+
     # Restore .config after clean
+    echo -e "${INFO} Copy [ ${config_path}/config-${kernel_verpatch} ] to ${kernel_path}/${local_kernel_path}/.config ]"
     cp -f ${config_path}/config-${kernel_verpatch}  ${kernel_path}/${local_kernel_path}/.config
 
     # Check .config file
