@@ -60,10 +60,10 @@ host_release="$(cat /etc/os-release | grep '^VERSION_CODENAME=.*' | cut -d'=' -f
 
 # Set the default for downloading kernel sources from github.com
 repo_owner="feryw"
-repo_branch="master"
+repo_branch="main"
 build_kernel=("6.1.1" "5.15.1")
 # Set whether to use the latest kernel, options: [ true / false ]
-auto_kernel="true"
+auto_kernel="false"
 # Set whether to apply custom kernel patches, options: [ true / false ]
 auto_patch="false"
 # Set custom signature for the kernel
@@ -367,6 +367,11 @@ get_kernel_source() {
 	git checkout ${CHECKOUT_VER}
         [[ "${?}" -eq "0" ]] || error_msg "[ https://github.com/${server_kernel_repo} ] Clone failed."
     else
+        cd ${kernel_path}/${local_kernel_path}
+        git checkout ${code_branch} && git reset --hard origin/${code_branch} && git pull
+        CHECKOUT_VER="$(git rev-list HEAD --grep "Linux ${build_kernel}")"
+        echo -e "${INFO} CHECKOUT_VER = ${CHECKOUT_VER}"
+        git checkout ${CHECKOUT_VER}
         # Get a local kernel version
         local_makefile="${kernel_path}/${local_kernel_path}/Makefile"
         local_makefile_version="$(cat ${local_makefile} | grep -oE "VERSION =.*" | head -n 1 | grep -oE '[0-9]{1,3}')"
@@ -376,15 +381,11 @@ get_kernel_source() {
         if [[ "${auto_kernel}" == "true" || "${auto_kernel}" == "yes" ]] && [[ "${kernel_sub}" -gt "${local_makefile_sublevel}" ]]; then
             # Pull the latest source code of the server
             cd ${kernel_path}/${local_kernel_path}
-            git checkout ${code_branch} && git reset --hard origin/${code_branch} && git pull && git submodule update --recursive --remote
+            git checkout ${code_branch} && git reset --hard origin/${code_branch} && git pull
             unset kernel_version
             kernel_version="${local_makefile_version}.${local_makefile_patchlevel}.${kernel_sub}"
             echo -e "${INFO} Synchronize the upstream source code, compile the kernel version [ ${kernel_version} ]."
         else
-	    cd ${kernel_path}/${local_kernel_path}
-            CHECKOUT_VER="$(git rev-list HEAD --grep "Linux ${build_kernel}")"
-            echo -e "${INFO} CHECKOUT_VER = ${CHECKOUT_VER}"
-            git checkout ${CHECKOUT_VER}
             # Reset to local kernel version number
             unset kernel_version
             kernel_version="${local_makefile_version}.${local_makefile_patchlevel}.${local_makefile_sublevel}"
@@ -600,7 +601,7 @@ generate_uinitrd() {
     sudo cp -f ${script_path}/ubuntu_chroot_armbian.sh ${tag_rootfs}/root
     sudo chmod +x ${tag_rootfs}/root/ubuntu_chroot_armbian.sh
     sudo sync && sleep 3
-    echo -e "${INFO} Kernel copy results in the [ ${tag_rootfs}/root ] directory: \n$(ls -l ${tag_rootfs}/root) \n"
+    echo -e "${INFO} Kernel copy results in the [ ${tag_rootfs}/root ] directory: \n$(sudo ls -l ${tag_rootfs}/root) \n"
 
     # Enter the armbian system to generate /boot/uInitrd-${kernel_outname} file
     echo -e "${INFO} Enter the chroot armbian system..."
@@ -620,7 +621,6 @@ generate_uinitrd() {
 }
 
 packit_dtbs() {
-    kernel_outname="6.4.11"
     # Pack 3 dtbs files
     echo -e "${STEPS} Packing the [ ${kernel_outname} ] dtbs packages..."
 
@@ -662,7 +662,6 @@ packit_dtbs() {
 }
 
 packit_kernel() {
-    kernel_outname="6.4.11"
     # Pack 3 kernel files
     echo -e "${STEPS} Packing the [ ${kernel_outname} ] boot, modules and header packages..."
 
@@ -749,17 +748,16 @@ loop_recompile() {
     done
 }
 
-sync && sleep 3
-sudo umount /home/infra/stb/kernel-compiler-dbai/compile-kernel/output/chroot/root/boot
-sudo umount /home/infra/stb/kernel-compiler-dbai/compile-kernel/output/chroot/root
-sudo umount /home/infra/stb/kernel-compiler-dbai/compile-kernel/output/chroot/root/boot
-sudo umount /home/infra/stb/kernel-compiler-dbai/compile-kernel/output/chroot/root
-sudo umount /home/infra/stb/kernel-compiler-dbai/compile-kernel/output/chroot/root/boot
-sudo umount /home/infra/stb/kernel-compiler-dbai/compile-kernel/output/chroot/root
-sudo umount /home/infra/stb/kernel-compiler-dbai/compile-kernel/output/chroot/root/boot
-sudo umount /home/infra/stb/kernel-compiler-dbai/compile-kernel/output/chroot/root
-sudo losetup -D
-
+sudo sync && sleep 3
+sudo umount ${chroot_path}/root/boot 2>/dev/null
+sudo umount ${chroot_path}/root 2>/dev/null
+sudo umount ${chroot_path}/root/boot 2>/dev/null
+sudo umount ${chroot_path}/root 2>/dev/null
+sudo umount ${chroot_path}/root/boot 2>/dev/null
+sudo umount ${chroot_path}/root 2>/dev/null
+sudo umount ${chroot_path}/root/boot 2>/dev/null
+sudo umount ${chroot_path}/root 2>/dev/null
+sudo losetup -D 2>/dev/null
 
 # Show welcome message
 echo -e "${STEPS} Welcome to compile kernel! \n"
@@ -771,7 +769,7 @@ echo -e "${INFO} Server running on Ubuntu: [ Release: ${host_release} / Host: ${
 # Initialize variables
 init_var "${@}"
 # Check and install the toolchain
-#toolchain_check
+toolchain_check
 # Query the latest kernel version
 [[ "${auto_kernel}" == "true" || "${auto_kernel}" == "yes" ]] && query_version
 
